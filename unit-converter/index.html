@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>單位換算器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .swap-animation {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 隱藏數字輸入框箭頭 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <div class="w-full max-w-xl">
+        <!-- 主卡片容器 -->
+        <div class="glass-panel rounded-[2rem] p-8 md:p-12 space-y-6">
+            
+            <!-- 產品規格選擇區 -->
+            <div class="space-y-3">
+                <label class="flex items-center text-lg font-bold text-gray-700 ml-1">
+                    <i class="fas fa-box-open mr-2 text-indigo-600"></i> 產品規格
+                </label>
+                <div class="relative group">
+                    <select id="productSelect" class="w-full pl-5 pr-14 py-6 bg-white border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:outline-none transition-all appearance-none cursor-pointer text-gray-800 text-xl md:text-2xl font-black shadow-sm group-hover:border-gray-200">
+                        <option value="300">Lesui 340g 膜</option>
+                        <option value="165">Lesui 454g 膜</option>
+                    </select>
+                    <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-600">
+                        <i class="fas fa-chevron-down text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 換算比例顯示區 -->
+            <div class="flex items-center justify-center py-2 border-b border-gray-100">
+                <div class="flex items-center gap-2 text-gray-400">
+                    <i class="fas fa-info-circle text-xs"></i>
+                    <p class="text-sm font-medium tracking-wide">
+                        參考基準：<span id="rateDisplay" class="font-bold text-gray-500">300</span> PCS/KG
+                    </p>
+                </div>
+            </div>
+
+            <!-- 核心換算區 -->
+            <div id="inputContainer" class="flex flex-col gap-4 relative pt-2">
+                
+                <!-- 數量欄位 (PCS) -->
+                <div id="pcsWrapper" class="swap-animation group flex-1">
+                    <div class="p-1 bg-white border-2 border-transparent focus-within:border-amber-400 rounded-2xl shadow-sm transition-all overflow-hidden">
+                        <div class="flex items-center px-5 py-4">
+                            <div class="flex flex-col flex-1">
+                                <label class="text-sm uppercase tracking-wider font-bold text-amber-500 mb-2">數量 Quantity</label>
+                                <input type="text" id="pcsInput" placeholder="0" inputmode="numeric"
+                                    class="w-full bg-transparent text-3xl font-bold text-gray-800 placeholder-gray-300 focus:outline-none">
+                            </div>
+                            <div class="bg-amber-50 text-amber-600 px-4 py-2 rounded-xl font-black text-sm ml-4">
+                                PCS
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 調換按鈕 -->
+                <div id="swapBtnWrapper" class="flex justify-center -my-6 z-10">
+                    <button id="swapBtn" title="點擊調換輸入位置" 
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:shadow-indigo-200 transition-all active:scale-90 border-4 border-white">
+                        <i class="fas fa-sync-alt text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- 重量欄位 (KG) -->
+                <div id="kgWrapper" class="swap-animation group flex-1">
+                    <div class="p-1 bg-white border-2 border-transparent focus-within:border-emerald-500 rounded-2xl shadow-sm transition-all overflow-hidden">
+                        <div class="flex items-center px-5 py-4">
+                            <div class="flex flex-col flex-1">
+                                <label class="text-sm uppercase tracking-wider font-bold text-emerald-600 mb-2">重量 Weight</label>
+                                <input type="number" id="kgInput" placeholder="0.0" step="0.1" inputmode="decimal"
+                                    class="w-full bg-transparent text-3xl font-bold text-gray-800 placeholder-gray-300 focus:outline-none">
+                            </div>
+                            <div class="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl font-black text-sm ml-4">
+                                KG
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 清除按鈕 -->
+            <div class="pt-4">
+                <button id="resetBtn" class="w-full flex items-center justify-center gap-3 py-5 bg-white hover:bg-red-50 text-red-500 border-2 border-red-100 rounded-2xl text-xl font-extrabold transition-all active:scale-95 shadow-md">
+                    <i class="fas fa-trash-alt text-lg"></i> 清除所有數值
+                </button>
+            </div>
+        </div>
+        
+        <!-- 版權資訊 -->
+        <p class="text-center text-indigo-100/60 text-xs font-medium mt-8">
+            <i class="fas fa-shield-halved mr-1"></i> 生產資料輔助工具 · 專業版 2.9
+        </p>
+    </div>
+
+    <script>
+        const productSelect = document.getElementById('productSelect');
+        const pcsInput = document.getElementById('pcsInput');
+        const kgInput = document.getElementById('kgInput');
+        const rateDisplay = document.getElementById('rateDisplay');
+        const resetBtn = document.getElementById('resetBtn');
+        const swapBtn = document.getElementById('swapBtn');
+        const inputContainer = document.getElementById('inputContainer');
+        const pcsWrapper = document.getElementById('pcsWrapper');
+        const kgWrapper = document.getElementById('kgWrapper');
+        const swapBtnWrapper = document.getElementById('swapBtnWrapper');
+
+        let isSwapped = false;
+
+        // 格式化數字為千分位
+        function formatWithCommas(value) {
+            if (!value && value !== 0) return "";
+            const num = value.toString().replace(/,/g, "");
+            if (isNaN(num)) return "";
+            return Number(num).toLocaleString('en-US');
+        }
+
+        // 移除逗號轉換回純數字
+        function unformatCommas(value) {
+            return value.toString().replace(/,/g, "");
+        }
+
+        function updateRate() {
+            const rate = parseFloat(productSelect.value);
+            rateDisplay.innerText = rate;
+            
+            // 根據當前活動焦點決定重新計算哪個值
+            if (document.activeElement === kgInput) {
+                calculateFromKg();
+            } else {
+                calculateFromPcs();
+            }
+        }
+
+        // 從數量 PCS 換算重量 KG
+        function calculateFromPcs() {
+            const rate = parseFloat(productSelect.value);
+            const rawValue = unformatCommas(pcsInput.value);
+            const pcs = parseFloat(rawValue);
+
+            if (!isNaN(pcs) && pcs !== 0) {
+                // 保留一位小數
+                kgInput.value = (pcs / rate).toFixed(1);
+            } else if (pcs === 0) {
+                kgInput.value = "0";
+            } else {
+                kgInput.value = "";
+            }
+        }
+
+        // 從重量 KG 換算數量 PCS
+        function calculateFromKg() {
+            const rate = parseFloat(productSelect.value);
+            const kg = parseFloat(kgInput.value);
+
+            if (!isNaN(kg) && kg !== 0) {
+                // 使用 Math.floor 進行無條件捨去 (Round down)
+                const result = Math.floor(kg * rate);
+                pcsInput.value = formatWithCommas(result);
+            } else if (kg === 0) {
+                pcsInput.value = "0";
+            } else {
+                pcsInput.value = "";
+            }
+        }
+
+        // PCS 輸入事件處理（即時格式化）
+        pcsInput.addEventListener('input', (e) => {
+            // 只保留數字
+            let cursorPosition = e.target.selectionStart;
+            let originalLength = e.target.value.length;
+            
+            let value = unformatCommas(e.target.value).replace(/\D/g, "");
+            
+            if (value === "") {
+                e.target.value = "";
+                kgInput.value = "";
+                return;
+            }
+
+            e.target.value = formatWithCommas(value);
+            
+            // 修正游標位置，避免跳動
+            let newLength = e.target.value.length;
+            cursorPosition = cursorPosition + (newLength - originalLength);
+            e.target.setSelectionRange(cursorPosition, cursorPosition);
+
+            calculateFromPcs();
+        });
+
+        // KG 輸入事件處理
+        kgInput.addEventListener('input', calculateFromKg);
+
+        // 切換規格
+        productSelect.addEventListener('change', updateRate);
+
+        // 調換位置邏輯
+        swapBtn.addEventListener('click', () => {
+            isSwapped = !isSwapped;
+            const icon = swapBtn.querySelector('i');
+            icon.style.transform = `rotate(${isSwapped ? 180 : 0}deg)`;
+            icon.style.transition = 'transform 0.5s ease';
+
+            if (isSwapped) {
+                inputContainer.insertBefore(kgWrapper, swapBtnWrapper);
+                inputContainer.appendChild(pcsWrapper);
+            } else {
+                inputContainer.insertBefore(pcsWrapper, swapBtnWrapper);
+                inputContainer.appendChild(kgWrapper);
+            }
+        });
+
+        // 重置按鈕
+        resetBtn.addEventListener('click', () => {
+            pcsInput.value = "";
+            kgInput.value = "";
+            resetBtn.classList.add('scale-95');
+            setTimeout(() => resetBtn.classList.remove('scale-95'), 100);
+        });
+
+        // 初始化換算率
+        updateRate();
+    </script>
+</body>
+</html>
