@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>生食揀貨</title>
+    
+    <!-- iPhone Add to Home Screen Settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="生食揀貨">
+    
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExNSIgZmlsbD0iIzI1NjNlYiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0zODAgMTI4SDMyMGMwLTI2LjUtMjEuNS00OC00OC00OHMtNDggMjEuNS00OCA0OEgxMzJjLTE3LjcgMC0zMiAxNC4zLTMyIDMydjI1NmMwIDE3LjcgMTQuMyAzMiAzMiAzMmg0OHY0OGMwIDguOCA3LjIgMTYgMTYgMTZoMTYwYzguOCAwIDE2LTcuMiAxNi0xNnYtNDhoNDhjMTcuNyAwIDMyLTE0LjMgMzItMzJWMTYwYzAtMTcuNy0xNC4zLTMyLTMyLTMyem0tMTA4IDMyYTI0IDI0IDAgMSAxIDAgNDggMjQgMjQgMCAwIDEgMC00OHptLTE0MCAyMjRWMTYwaDI0djE5MmMwIDguOCA3LjIgMTYgMTYgMTZoMTYwYzguOCAwIDE2LTcuMiAxNi0xNlYxNjBoMjR2MjI0SDEzMnoiLz48L3N2Zz4=">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; padding-top: env(safe-area-inset-top); }
+        
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        .loading-spinner { border: 3px solid rgba(255, 255, 255, 0.3); border-top: 3px solid #ffffff; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .picking-item { transition: all 0.2s ease; cursor: pointer; }
+        .picking-item:active { background-color: #f1f5f9; }
+        .picking-item.completed { opacity: 0.35; background-color: #f8fafc; }
+        .picking-item.completed .item-name { text-decoration: line-through; color: #64748b !important; }
+        .picking-item.completed .item-qty { color: #94a3b8 !important; }
+        
+        .tab-active { position: relative; color: #2563eb; font-weight: 900; background: white !important; box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.1); }
+        
+        .glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 50; }
+        
+        .custom-checkbox { width: 32px; height: 32px; cursor: pointer; accent-color: #2563eb; border-radius: 10px; flex-shrink: 0; }
+        
+        .floating-save {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 100;
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4);
+        }
+
+        #previewImg { max-height: 120px; object-fit: contain; }
+
+        .modal-overlay { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-900 pb-32">
+
+    <header class="glass-header border-b border-slate-200 px-4 py-4 mb-4">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-black text-slate-800 tracking-tight">生食揀貨</h1>
+                <p class="text-[10px] text-blue-600 font-black uppercase tracking-widest">Efficiency Pro (Local)</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="window.openKeyModal()" class="text-slate-400 hover:text-blue-500 transition p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                </button>
+                <button id="clearBtn" onclick="window.clearSession()" class="hidden text-slate-400 hover:text-red-500 transition p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Floating Save Button -->
+    <button id="saveBtn" onclick="window.saveCurrentConfig()" class="hidden floating-save bg-blue-600 text-white p-4 rounded-2xl hover:bg-blue-700 transition active:scale-90 flex items-center justify-center">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+    </button>
+
+    <main class="max-w-4xl mx-auto px-4">
+        
+        <!-- Progress Bar -->
+        <div id="progressContainer" class="hidden mb-6 bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-black text-slate-500 uppercase tracking-tighter">揀貨進度</span>
+                <span id="progressText" class="text-sm font-black text-blue-600">0%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden shadow-inner">
+                <div id="progressBar" class="bg-blue-500 h-full transition-all duration-700 ease-out" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Upload & Analysis -->
+        <div class="mb-6 bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col md:flex-row gap-4 items-stretch">
+                    <div class="flex-1 relative border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-slate-50 group hover:border-blue-400 transition flex items-center justify-center min-h-[100px]">
+                        <input type="file" id="imageInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="window.handleFileSelect(event)">
+                        <div id="uploadPrompt" class="text-center">
+                            <svg class="w-8 h-8 mx-auto text-slate-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span class="text-xs font-black text-slate-400">拍照或上傳</span>
+                        </div>
+                        <img id="previewImg" class="hidden rounded-xl shadow-md border-4 border-white" alt="Preview">
+                    </div>
+                    <button id="analyzeBtn" onclick="window.analyzeImage()" class="bg-slate-900 text-white px-8 py-4 rounded-2xl hover:bg-black flex items-center justify-center gap-3 transition shadow-xl active:scale-95 font-black text-xl disabled:opacity-50">
+                        <span id="btnText">開始分析</span>
+                        <div id="loadingIcon" class="loading-spinner hidden"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex p-1.5 bg-slate-200 rounded-2xl mb-6 shadow-inner">
+            <button onclick="window.switchSession('AM')" id="tabAM" class="flex-1 py-3 text-center rounded-xl font-black text-sm transition-all tab-active">上午 AM</button>
+            <button onclick="window.switchSession('PM')" id="tabPM" class="flex-1 py-3 text-center rounded-xl font-black text-sm transition-all text-slate-500">下午 PM</button>
+        </div>
+
+        <!-- 當前清單 TO# 顯示 -->
+        <div id="currentTOContainer" class="hidden mb-4 px-2">
+            <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Transfer Order#</p>
+            <h2 id="currentTONumber" class="text-2xl font-black text-blue-700">WHT0000000</h2>
+        </div>
+
+        <div id="pickingArea" class="space-y-4">
+            <div id="emptyState" class="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-300 font-black italic">待命上傳...</div>
+        </div>
+
+        <!-- 歷史紀錄 -->
+        <div class="mt-16 border-t border-slate-200 pt-8">
+            <h3 class="font-black text-slate-800 text-lg mb-6 flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                近期揀貨紀錄
+            </h3>
+            <div id="historyList" class="grid grid-cols-1 gap-3"></div>
+        </div>
+    </main>
+
+    <!-- API Key Entry Modal -->
+    <div id="keyModal" class="modal-overlay">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl">
+            <h3 class="text-xl font-black text-slate-800 mb-2">設定 Gemini API</h3>
+            <p class="text-slate-500 mb-6 font-medium text-sm">請輸入您的 Google Gemini API Key 以開始分析單據。此 Key 僅存於本地。</p>
+            <input type="password" id="apiKeyInput" placeholder="在此輸入 AIza..." class="w-full px-4 py-4 border border-slate-200 rounded-2xl mb-6 outline-none focus:ring-2 focus:ring-blue-500 transition bg-slate-50 font-mono text-sm">
+            <button onclick="window.saveApiKey()" class="w-full py-4 rounded-2xl bg-slate-900 text-white font-black hover:bg-black shadow-xl transition active:scale-95">儲存並啟動</button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl">
+            <h3 class="text-xl font-black text-slate-800 mb-2">確定刪除嗎？</h3>
+            <p class="text-slate-500 mb-6 font-medium">此紀錄將永久從瀏覽器中移除。</p>
+            <div class="flex gap-3">
+                <button onclick="window.closeConfirm()" class="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition">取消</button>
+                <button id="finalDeleteBtn" class="flex-1 py-3 rounded-2xl bg-red-500 text-white font-bold hover:bg-red-600 shadow-lg shadow-red-100 transition">確定刪除</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        let currentData = null;
+        let activeSession = 'AM';
+        const STORAGE_KEY = 'PICKING_RECORDS_V2';
+
+        // --- 初始化頁面 ---
+        window.onload = () => {
+            const savedKey = localStorage.getItem('GEMINI_API_KEY');
+            if (!savedKey) {
+                window.openKeyModal();
+            }
+            loadHistory();
+        };
+
+        window.openKeyModal = () => {
+            document.getElementById('apiKeyInput').value = localStorage.getItem('GEMINI_API_KEY') || '';
+            document.getElementById('keyModal').style.display = 'flex';
+        };
+
+        window.saveApiKey = () => {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (key) {
+                localStorage.setItem('GEMINI_API_KEY', key);
+                document.getElementById('keyModal').style.display = 'none';
+                showMessage("API Key 已儲存 ✅");
+            }
+        };
+
+        window.handleFileSelect = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('uploadPrompt').classList.add('hidden');
+                    const img = document.getElementById('previewImg');
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        const categoryMap = {
+            'tray': { label: 'Tray / 盒類', color: 'green', weight: 1, icon: '📦' },
+            'carton': { label: '紙箱', color: 'orange', weight: 2, icon: '📜' },
+            'consumable': { label: '包裝耗材 (合板)', color: 'blue', weight: 3, icon: '🎞️' },
+            'pallet': { label: '藍板', color: 'blue', weight: 4, icon: '🧱' }
+        };
+
+        function getItemDisplayName(name) {
+            let n = name;
+            if (/\b(US|USA)\b/i.test(n)) n += " 🇺🇸";
+            if (/\bCA\b/i.test(n) || /\bCanada\b/i.test(n)) n += " 🇨🇦";
+            const l = n.toLowerCase();
+            if (l.includes('blue') || l.includes('藍')) n += " 🔵";
+            if (l.includes('red') || l.includes('紅')) n += " 🔴";
+            if (l.includes('orange') || l.includes('橙')) n += " 🟠";
+            if (l.includes('purple') || l.includes('紫')) n += " 🟣";
+            if (/\bBEEF\b/i.test(n) || n.includes('牛') || /\bCAB\b/i.test(n)) n += " 🐂";
+            if (/\bLAMB\b/i.test(n) || n.includes('羊')) n += " 🐑";
+            if (/\bPORK\b/i.test(n) || n.includes('豬')) n += " 🐖";
+            return n;
+        }
+
+        // --- Gemini OCR 分析 ---
+        window.analyzeImage = async () => {
+            const apiKey = localStorage.getItem('GEMINI_API_KEY');
+            if (!apiKey) return window.openKeyModal();
+
+            const file = document.getElementById('imageInput').files[0];
+            if (!file) return showMessage("請先拍照或上傳圖片");
+
+            const btnText = document.getElementById('btnText');
+            const loading = document.getElementById('loadingIcon');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            
+            analyzeBtn.disabled = true;
+            btnText.innerText = "正在解讀...";
+            loading.classList.remove('hidden');
+
+            try {
+                const base64 = await toBase64(file);
+                const rawData = base64.split(',')[1];
+                
+                const prompt = `分析此揀貨單單據。
+                1. 識別圖片左上角的 Transfer Order 編號 (例如 WHT0000238)。
+                2. 從表格提取數據：
+                   - 忽略 leftmost 的 "Item No." 欄位。
+                   - 將 "Description" 欄位的內容作為物品名稱 (name)。
+                   - 提取 "Quantity" 為數量。
+                   - 提取 "Unit of Measure Code" 為單位 (unit)。
+                3. 分類清單項目 (category)：'tray' (盒、盤、Tray)、'carton' (紙箱)、'consumable' (膜、帶、耗材)、'pallet' (藍板)。
+                4. Session 規則：'AM' (上午) 或 'PM' (下午)。
+                返回純 JSON 格式物件：{ "transferOrder": "...", "items": [{name, category, quantity, unit, session}] }`;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: "image/png", data: rawData } }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error?.message || "分析失敗");
+
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const analysis = JSON.parse(text);
+
+                const newRecord = {
+                    id: 'REC_' + Date.now(),
+                    transferOrder: analysis.transferOrder || "N/A",
+                    items: analysis.items.map(i => ({ ...i, completed: false })),
+                    timestamp: new Date().toISOString(),
+                    config: { trayPer: 16, cartonPer: 300, palletPer: 14 }
+                };
+
+                // 儲存到 LocalStorage
+                const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                history.push(newRecord);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+
+                currentData = newRecord;
+                renderUI();
+                loadHistory();
+                showMessage("解讀成功 ✅");
+            } catch (e) {
+                showMessage(`錯誤: ${e.message}`);
+            } finally {
+                analyzeBtn.disabled = false;
+                btnText.innerText = "開始分析";
+                loading.classList.add('hidden');
+            }
+        };
+
+        // --- 歷史紀錄管理 ---
+        window.loadHistory = () => {
+            const list = document.getElementById('historyList');
+            const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            list.innerHTML = '';
+            
+            history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).forEach(data => {
+                const el = document.createElement('div');
+                el.className = 'bg-white p-5 rounded-3xl border border-slate-200 flex justify-between items-center shadow-sm picking-item';
+                
+                const dateObj = new Date(data.timestamp);
+                const dateStr = dateObj.toLocaleDateString('zh-HK', { month: '2-digit', day: '2-digit', year: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false });
+                
+                el.innerHTML = `
+                    <div class="flex-1" onclick="window.loadEntry('${data.id}')">
+                        <p class="text-2xl font-black text-blue-700 leading-none mb-1.5">${data.transferOrder || 'N/A'}</p>
+                        <div class="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                            <span>${dateStr}</span>
+                            <span class="opacity-30">•</span>
+                            <span>${timeStr}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="text-right">
+                            <p class="text-2xl font-black text-slate-800 leading-none">${data.items.length}</p>
+                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-tighter mt-1">Items</p>
+                        </div>
+                        <button onclick="window.askDelete(event, '${data.id}')" class="text-slate-300 hover:text-red-500 p-2 transition active:scale-90">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(el);
+            });
+        };
+
+        window.loadEntry = (id) => {
+            const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const record = history.find(r => r.id === id);
+            if (record) {
+                currentData = record;
+                renderUI();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        window.saveCurrentConfig = () => {
+            if (!currentData) return;
+            
+            const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const index = history.findIndex(r => r.id === currentData.id);
+            
+            if (index !== -1) {
+                const config = {
+                    trayPer: parseInt(document.querySelector('input[data-category="tray"]')?.value || 16),
+                    cartonPer: parseInt(document.querySelector('input[data-category="carton"]')?.value || 300),
+                    palletPer: parseInt(document.querySelector('input[data-category="pallet"]')?.value || 14)
+                };
+                
+                const items = currentData.items.map((it, idx) => ({ 
+                    ...it, 
+                    completed: document.getElementById(`chk-${idx}`)?.checked || false 
+                }));
+
+                history[index].config = config;
+                history[index].items = items;
+                currentData = history[index];
+                
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+                showMessage("儲存成功 💾");
+            }
+        };
+
+        // --- 刪除確認邏輯 ---
+        let deleteTargetId = null;
+        window.askDelete = (event, id) => {
+            event.stopPropagation();
+            deleteTargetId = id;
+            document.getElementById('confirmModal').style.display = 'flex';
+        };
+
+        window.closeConfirm = () => {
+            document.getElementById('confirmModal').style.display = 'none';
+            deleteTargetId = null;
+        };
+
+        document.getElementById('finalDeleteBtn').onclick = () => {
+            if (deleteTargetId) {
+                const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                const filtered = history.filter(r => r.id !== deleteTargetId);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+                window.closeConfirm();
+                loadHistory();
+                if (currentData && currentData.id === deleteTargetId) {
+                    currentData = null;
+                    document.getElementById('pickingArea').innerHTML = '<div class="text-center py-20 text-slate-300 font-black italic">紀錄已刪除...</div>';
+                    document.getElementById('currentTOContainer').classList.add('hidden');
+                    document.getElementById('saveBtn').classList.add('hidden');
+                }
+                showMessage("已從本地移除");
+            }
+        };
+
+        window.clearSession = () => {
+            currentData.items.forEach((it, idx) => {
+                const chk = document.getElementById(`chk-${idx}`);
+                if (chk && chk.checked) {
+                    chk.checked = false;
+                    document.getElementById(`item-row-${idx}`).classList.remove('completed');
+                }
+            });
+            updateProgressBar();
+        };
+
+        window.switchSession = (s) => { 
+            activeSession = s; 
+            document.getElementById('tabAM').className = `flex-1 py-3 text-center rounded-xl font-black text-sm transition-all ${s === 'AM' ? 'tab-active' : 'text-slate-500'}`;
+            document.getElementById('tabPM').className = `flex-1 py-3 text-center rounded-xl font-black text-sm transition-all ${s === 'PM' ? 'tab-active' : 'text-slate-500'}`;
+            renderUI(); 
+        };
+
+        window.toggleRow = (idx) => { 
+            const chk = document.getElementById(`chk-${idx}`);
+            if (!chk) return;
+            chk.checked = !chk.checked;
+            document.getElementById(`item-row-${idx}`).classList.toggle('completed', chk.checked); 
+            updateProgressBar(); 
+        };
+
+        const updateProgressBar = () => {
+            if (!currentData) return;
+            const its = currentData.items.filter(i => i.session === activeSession);
+            if (its.length === 0) return;
+            let done = 0;
+            its.forEach(it => {
+                const ridx = currentData.items.indexOf(it);
+                const chk = document.getElementById(`chk-${ridx}`);
+                if (chk && chk.checked) done++;
+            });
+            const pct = Math.round((done / its.length) * 100);
+            document.getElementById('progressBar').style.width = `${pct}%`;
+            document.getElementById('progressText').innerText = `${pct}% (${done}/${its.length})`;
+            document.getElementById('progressContainer').classList.remove('hidden');
+            document.getElementById('clearBtn').classList.toggle('hidden', done === 0);
+        };
+
+        window.renderUI = () => {
+            if (!currentData) return;
+            const area = document.getElementById('pickingArea'); area.innerHTML = '';
+            document.getElementById('saveBtn').classList.remove('hidden');
+            
+            document.getElementById('currentTOContainer').classList.remove('hidden');
+            document.getElementById('currentTONumber').innerText = currentData.transferOrder || "N/A";
+
+            const filtered = currentData.items.map((it, idx) => ({...it, originalIndex: idx})).filter(it => it.session === activeSession);
+            if (filtered.length === 0) { 
+                area.innerHTML = `<div class="text-center py-20 text-slate-400 bg-white rounded-3xl border border-slate-100 font-bold">此時段無揀貨任務</div>`; 
+                document.getElementById('progressContainer').classList.add('hidden'); 
+                return; 
+            }
+
+            const consumables = filtered.filter(i => i.category === 'consumable');
+            const others = filtered.filter(i => i.category !== 'consumable');
+            const groups = {};
+            others.forEach(it => {
+                const cat = (it.category === 'box' || it.category === 'tray') ? 'tray' : it.category;
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push(it);
+            });
+
+            const sortedKeys = ['tray', 'carton', 'pallet'];
+            sortedKeys.forEach(key => {
+                if (key === 'pallet') return; 
+                if (groups[key]) {
+                    const info = categoryMap[key];
+                    groups[key].forEach(it => area.appendChild(createSection(info.icon + ' ' + info.label, info.color, [it], false)));
+                }
+            });
+
+            if (consumables.length > 0) {
+                const info = categoryMap['consumable'];
+                area.appendChild(createSection(info.icon + ' ' + info.label, info.color, consumables, true));
+            }
+
+            if (groups['pallet']) {
+                const info = categoryMap['pallet'];
+                groups['pallet'].forEach(it => area.appendChild(createSection(info.icon + ' ' + info.label, info.color, [it], false)));
+            }
+
+            updateProgressBar();
+        };
+
+        function createSection(title, color, items, isCons) {
+            const div = document.createElement('section');
+            div.className = 'bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden';
+            const it = items[0];
+            let def = it.category==='carton'?currentData.config.cartonPer:((it.category==='tray'||it.category==='box')?(it.unit?.toLowerCase().includes('skid')?1:currentData.config.trayPer):currentData.config.palletPer);
+            const rid = 'SPLIT_' + Math.random().toString(36).substr(2, 9);
+            
+            div.innerHTML = `
+                <div class="bg-${color}-50 px-6 py-4 border-b border-slate-100 font-black text-${color}-800 text-xs flex justify-between">
+                    <span>${title} ${!isCons ? `- ${getItemDisplayName(it.name)}` : ''}</span>
+                    ${isCons ? '<span class="text-[9px] bg-blue-100 px-2 py-0.5 rounded text-blue-600">合板區</span>' : ''}
+                </div>
+                ${!isCons ? `<div class="p-3 bg-slate-50 border-b flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase">每板設定 <input type="number" value="${def}" data-category="${(it.category==='box'||it.category==='tray')?'tray':it.category}" oninput="window.updateSplits('${rid}', ${it.quantity}, this.value, '${color}')" class="w-16 px-2 py-1 border border-slate-200 rounded-lg bg-white text-slate-800"></div>` : ''}
+                <ul class="divide-y divide-slate-100">
+                    ${items.map(i => `
+                        <li id="item-row-${i.originalIndex}" onclick="window.toggleRow(${i.originalIndex})" class="p-5 flex items-start picking-item ${i.completed?'completed':''}">
+                            <input type="checkbox" id="chk-${i.originalIndex}" ${i.completed?'checked':''} class="custom-checkbox mt-1 pointer-events-none">
+                            <div class="ml-4 flex-1">
+                                <div class="flex justify-between items-start">
+                                    <p class="font-bold text-slate-800 leading-snug w-2/3 item-name">${getItemDisplayName(i.name)}</p>
+                                    <div class="text-right">
+                                        <p class="text-2xl font-black text-black item-qty">${i.quantity}</p>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">${i.unit || '份'}</p>
+                                    </div>
+                                </div>
+                                ${!isCons ? `<div id="${rid}" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mt-4"></div>` : ''}
+                            </div>
+                        </li>`).join('')}
+                </ul>`;
+            if(!isCons) setTimeout(() => window.updateSplits(rid, it.quantity, def, color), 10);
+            return div;
+        }
+
+        window.updateSplits = (cid, tot, per, col) => {
+            const el = document.getElementById(cid); if (!el) return;
+            const p = parseInt(per) || 1; const full = Math.floor(tot / p), rem = tot % p;
+            let h = '';
+            for (let i = 1; i <= full; i++) h += `<div class="pallet-card border rounded-xl p-2 text-center bg-white shadow-sm ring-1 ring-slate-100"><p class="text-[8px] font-black text-slate-300">P.${i}</p><p class="text-sm font-black text-${col}-600">${p}</p></div>`;
+            if (rem > 0) h += `<div class="pallet-card border rounded-xl p-2 text-center bg-slate-100/50 shadow-sm"><p class="text-[8px] font-black text-slate-300">尾</p><p class="text-sm font-black text-slate-500">${rem}</p></div>`;
+            el.innerHTML = h;
+        };
+
+        function toBase64(f) { return new Promise((res) => { const r = new FileReader(); r.readAsDataURL(f); r.onload = () => res(r.result); }); }
+        function showMessage(m) { const d = document.createElement('div'); d.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-8 py-4 rounded-full z-[200] text-xs font-bold shadow-2xl text-center"; d.innerText = m; document.body.appendChild(d); setTimeout(() => d.remove(), 2500); }
+    </script>
+</body>
+</html>
