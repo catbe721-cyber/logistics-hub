@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>專業庫存管理系統 Pro</title>
+    
+    <!-- iOS Add to Home Screen 設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="庫存 Pro">
+    
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj4KICA8cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMWUyOTNiIi8+CiAgPHBhdGggZD0iTTkwIDQwIEw0MCA2NSBWMTIwIEw5MCAxNDUgTDE0MCAxMjAgVjY1IEw5MCA0MFoiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2Y4ZmFmYyIgc3Ryb2tlLXdpZHRoPSI4Ii8+CiAgPHBhdGggZD0iTTQwIDY1IEw5MCA5MCBMMTQwIDY1IE05MCA5MCBWMTQ1IiBzdHJva2U9IiNmOGZhZmMiIHN0cm9rZS13aWR0aD0iOCIvPgogIDxwYXRoIGQ9Ik03MCAxMDUgTDkwIDExNSBMMTEwIDEwNSIgc3Ryb2tlPSIjNGY0NmU1IiBzdHJva2Utd2lkdGg9IjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4=">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-gradient: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        }
+        body {
+            background: var(--bg-gradient);
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            color: #1e293b;
+        }
+        .app-container {
+            max-width: 440px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+        .card-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.7rem center;
+            background-size: 1.1em;
+        }
+        /* 修復核心：確保選擇器能抓到相鄰兄弟節點 */
+        .switch-input:checked ~ .switch-dot {
+            transform: translateX(100%);
+            background-color: white;
+        }
+        .switch-input:checked ~ .switch-bg {
+            background-color: var(--primary);
+        }
+        .input-field {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1.5px solid #e2e8f0;
+        }
+        .input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.08);
+            background-color: white;
+        }
+        .btn-active:active {
+            transform: scale(0.97);
+        }
+        .history-item {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="app-container">
+        <!-- 頂部標誌 -->
+        <div class="flex items-center justify-between mb-8 px-2">
+            <div>
+                <span class="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-md mb-2 inline-block">Enterprise Edition</span>
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">庫存錄入 <span class="text-indigo-600">Pro</span></h1>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+            </div>
+        </div>
+
+        <!-- API 配置 -->
+        <details class="group mb-6 bg-white rounded-2xl border border-slate-100 card-shadow">
+            <summary class="flex items-center justify-between p-4 cursor-pointer list-none">
+                <span class="text-xs font-bold text-slate-500 uppercase flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                    API 端點配置
+                </span>
+                <svg class="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="px-4 pb-4">
+                <input type="text" id="gasUrl" 
+                       value="https://script.google.com/macros/s/AKfycbz0o_2H1FT1Kc-2N5agOSigOmkwNKUF85wqBiLTI0i8fGqsZYZlccnPk-AX8sdIixb8/exec"
+                       class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 font-mono outline-none">
+            </div>
+        </details>
+
+        <!-- 主要輸入區域 -->
+        <main class="space-y-6">
+            <form id="inventoryForm" class="space-y-5">
+                <!-- 位置資訊 -->
+                <div class="bg-white p-5 rounded-[2rem] card-shadow border border-slate-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">儲位資訊 (Bin Code)</h2>
+                        <label class="flex items-center cursor-pointer">
+                            <span class="mr-2 text-[10px] font-bold text-slate-400">保留</span>
+                            <div class="relative">
+                                <input type="checkbox" id="keep_binCode" class="sr-only switch-input">
+                                <div class="w-8 h-4 bg-slate-200 rounded-full switch-bg transition-colors duration-200"></div>
+                                <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full switch-dot shadow-sm transition-transform duration-200"></div>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-4 gap-3">
+                        <div class="space-y-1">
+                            <p class="text-[9px] font-bold text-slate-400 pl-1">貨架</p>
+                            <select id="bin_rack" class="w-full p-3 bg-slate-50 rounded-xl text-slate-800 font-bold text-sm input-field outline-none">
+                                <option value="R">R</option><option value="F">F</option><option value="OTH">OTH</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-[9px] font-bold text-slate-400 pl-1">行數</p>
+                            <select id="bin_row" class="w-full p-3 bg-slate-50 rounded-xl text-slate-800 font-bold text-sm input-field outline-none">
+                                <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+                                <option value="D">D</option><option value="E">E</option><option value="F">F</option>
+                                <option value="G">G</option><option value="H">H</option><option value="J">J</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-[9px] font-bold text-slate-400 pl-1">板位</p>
+                            <select id="bin_pos" class="w-full p-3 bg-slate-50 rounded-xl text-slate-800 font-bold text-sm input-field outline-none">
+                                <option value="01">01</option><option value="02">02</option><option value="03">03</option>
+                                <option value="04">04</option><option value="05">05</option><option value="06">06</option>
+                                <option value="07">07</option><option value="08">08</option><option value="09">09</option>
+                                <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-[9px] font-bold text-slate-400 pl-1">層數</p>
+                            <select id="bin_level" class="w-full p-3 bg-slate-50 rounded-xl text-slate-800 font-bold text-sm input-field outline-none">
+                                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 產品資訊 -->
+                <div class="bg-white p-5 rounded-[2rem] card-shadow border border-slate-100 space-y-5">
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">產品名稱 (Item)</label>
+                            <label class="flex items-center cursor-pointer">
+                                <span class="mr-2 text-[10px] font-bold text-slate-400">保留</span>
+                                <div class="relative">
+                                    <input type="checkbox" id="keep_item" class="sr-only switch-input">
+                                    <div class="w-8 h-4 bg-slate-200 rounded-full switch-bg transition-colors duration-200"></div>
+                                    <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full switch-dot shadow-sm transition-transform duration-200"></div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                            </span>
+                            <input type="text" id="item" placeholder="請輸入產品名稱..." required
+                                   class="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 font-semibold input-field outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">數量 (Qty)</label>
+                                <label class="flex items-center cursor-pointer">
+                                    <span class="mr-2 text-[10px] font-bold text-slate-400">保留</span>
+                                    <div class="relative">
+                                        <input type="checkbox" id="keep_qty" class="sr-only switch-input">
+                                        <div class="w-8 h-4 bg-slate-200 rounded-full switch-bg transition-colors duration-200"></div>
+                                        <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full switch-dot shadow-sm transition-transform duration-200"></div>
+                                    </div>
+                                </label>
+                            </div>
+                            <input type="number" id="qty" placeholder="0" required
+                                   class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-extrabold text-2xl input-field outline-none text-center">
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">單位 (UoM)</label>
+                                <label class="flex items-center cursor-pointer">
+                                    <span class="mr-2 text-[10px] font-bold text-slate-400">保留</span>
+                                    <div class="relative">
+                                        <input type="checkbox" id="keep_uom" class="sr-only switch-input" checked>
+                                        <div class="w-8 h-4 bg-slate-200 rounded-full switch-bg transition-colors duration-200"></div>
+                                        <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full switch-dot shadow-sm transition-transform duration-200"></div>
+                                    </div>
+                                </label>
+                            </div>
+                            <select id="uom" required
+                                   class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 font-bold input-field outline-none">
+                                <option value="件">件</option><option value="箱">箱</option><option value="卷">卷</option><option value="板">板</option><option value="其他">其他</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" id="submitBtn"
+                        class="w-full bg-slate-900 hover:bg-black text-white font-extrabold py-5 rounded-[1.5rem] shadow-xl shadow-slate-200 mt-2 flex items-center justify-center space-x-3 text-lg btn-active transition-all duration-300">
+                    <span>同步雲端</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                </button>
+            </form>
+
+            <div id="status" class="status-msg hidden"></div>
+
+            <!-- 最近紀錄區塊 -->
+            <section class="mt-8">
+                <div class="flex items-center justify-between mb-4 px-2">
+                    <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-[0.2em]">最近紀錄 (Recent)</h2>
+                    <button onclick="clearHistoryUI()" class="text-[10px] font-bold text-indigo-500 uppercase hover:text-indigo-700 transition-colors">清除清單</button>
+                </div>
+                <div id="historyList" class="space-y-3">
+                    <div id="noHistory" class="bg-slate-100/50 border border-dashed border-slate-200 rounded-3xl py-8 text-center">
+                        <p class="text-xs font-bold text-slate-400">目前尚無錄入紀錄</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-12 text-center pb-8">
+            <p class="text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em]">Precision Inventory v2.6</p>
+        </footer>
+    </div>
+
+    <script>
+        const form = document.getElementById('inventoryForm');
+        const statusDiv = document.getElementById('status');
+        const gasUrlInput = document.getElementById('gasUrl');
+        const submitBtn = document.getElementById('submitBtn');
+        const historyList = document.getElementById('historyList');
+        const noHistory = document.getElementById('noHistory');
+
+        const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbz0o_2H1FT1Kc-2N5agOSigOmkwNKUF85wqBiLTI0i8fGqsZYZlccnPk-AX8sdIixb8/exec";
+
+        window.onload = () => {
+            const savedUrl = localStorage.getItem('gas_web_app_url');
+            gasUrlInput.value = savedUrl || DEFAULT_GAS_URL;
+
+            ['binCode', 'item', 'qty', 'uom'].forEach(field => {
+                const isKeep = localStorage.getItem(`keep_${field}`) === 'true';
+                const keepCheckbox = document.getElementById(`keep_${field}`);
+                if (keepCheckbox) keepCheckbox.checked = isKeep;
+                
+                if (isKeep) {
+                    if (field === 'binCode') {
+                        document.getElementById('bin_rack').value = localStorage.getItem('last_bin_rack') || 'R';
+                        document.getElementById('bin_row').value = localStorage.getItem('last_bin_row') || 'A';
+                        document.getElementById('bin_pos').value = localStorage.getItem('last_bin_pos') || '01';
+                        document.getElementById('bin_level').value = localStorage.getItem('last_bin_level') || '1';
+                    } else {
+                        const element = document.getElementById(field);
+                        if (element) {
+                            element.value = localStorage.getItem(`last_${field}`) || (field === 'uom' ? '件' : '');
+                        }
+                    }
+                }
+            });
+        };
+
+        gasUrlInput.addEventListener('change', (e) => {
+            localStorage.setItem('gas_web_app_url', e.target.value);
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const url = gasUrlInput.value.trim();
+            if (!url) {
+                showStatus('⚠️ 未配置 API 網址', 'error');
+                return;
+            }
+
+            const rack = document.getElementById('bin_rack').value;
+            const row = document.getElementById('bin_row').value;
+            const pos = document.getElementById('bin_pos').value;
+            const level = document.getElementById('bin_level').value;
+            const fullBinCode = `${rack}-${row}-${pos}-${level}`;
+
+            const payload = {
+                binCode: fullBinCode,
+                item: document.getElementById('item').value,
+                qty: document.getElementById('qty').value,
+                uom: document.getElementById('uom').value
+            };
+
+            // 存儲狀態
+            localStorage.setItem('last_bin_rack', rack);
+            localStorage.setItem('last_bin_row', row);
+            localStorage.setItem('last_bin_pos', pos);
+            localStorage.setItem('last_bin_level', level);
+            localStorage.setItem('last_item', payload.item);
+            localStorage.setItem('last_qty', payload.qty);
+            localStorage.setItem('last_uom', payload.uom);
+
+            ['binCode', 'item', 'qty', 'uom'].forEach(f => {
+                localStorage.setItem(`keep_${f}`, document.getElementById(`keep_${f}`).checked);
+            });
+
+            try {
+                setLoading(true);
+                await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                showStatus('✅ 資料已成功同步至雲端', 'success');
+                addToHistory(payload);
+                handlePostSubmitClearing();
+            } catch (error) {
+                showStatus('❌ 同步失敗: ' + error.message, 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function addToHistory(data) {
+            if (noHistory) noHistory.style.display = 'none';
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'history-item bg-white p-4 rounded-3xl border border-slate-100 card-shadow flex flex-col space-y-2';
+            itemDiv.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <span class="text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">${data.binCode}</span>
+                    <span class="text-[9px] font-bold text-slate-400 tracking-tighter uppercase">${timeStr}</span>
+                </div>
+                <div class="flex justify-between items-end">
+                    <p class="text-sm font-bold text-slate-800 truncate pr-4">${data.item}</p>
+                    <p class="text-xs font-black text-slate-900 flex-shrink-0">${data.qty} <span class="text-[10px] font-bold text-slate-400 ml-0.5">${data.uom}</span></p>
+                </div>
+            `;
+            historyList.insertBefore(itemDiv, historyList.firstChild);
+        }
+
+        function clearHistoryUI() {
+            historyList.innerHTML = `<div id="noHistory" class="bg-slate-100/50 border border-dashed border-slate-200 rounded-3xl py-8 text-center"><p class="text-xs font-bold text-slate-400">目前尚無錄入紀錄</p></div>`;
+        }
+
+        function handlePostSubmitClearing() {
+            if (!document.getElementById('keep_binCode').checked) {
+                document.getElementById('bin_rack').selectedIndex = 0;
+                document.getElementById('bin_row').selectedIndex = 0;
+                document.getElementById('bin_pos').selectedIndex = 0;
+                document.getElementById('bin_level').selectedIndex = 0;
+            }
+            if (!document.getElementById('keep_item').checked) document.getElementById('item').value = '';
+            if (!document.getElementById('keep_qty').checked) document.getElementById('qty').value = '';
+            if (!document.getElementById('keep_uom').checked) document.getElementById('uom').selectedIndex = 0;
+        }
+
+        function showStatus(msg, type) {
+            statusDiv.textContent = msg;
+            statusDiv.className = `status-msg block p-4 mt-4 rounded-2xl text-center font-bold text-sm shadow-lg ${type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`;
+            if (type === 'success') setTimeout(() => { statusDiv.className = 'hidden'; }, 3000);
+        }
+
+        function setLoading(loading) {
+            submitBtn.disabled = loading;
+            submitBtn.innerHTML = loading 
+                ? `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>同步中...</span>` 
+                : `<span>同步雲端</span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>`;
+            submitBtn.classList.toggle('opacity-70', loading);
+        }
+    </script>
+</body>
+</html>
