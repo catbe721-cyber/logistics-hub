@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>倉庫進出貨助手 Pro</title>
+    
+    <!-- iOS App 模式設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="倉庫快錄Pro">
+    
+    <!-- App 圖示 -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMGYxNzJhIi8+PHRleHQgeD0iOTAiIHk9IjExMCIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iODAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iOTAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5XSDwvdGV4dD48L3N2Zz4=">
+    
+    <!-- Android 主題色 -->
+    <meta name="theme-color" content="#0f172a">
+
+    <!-- 載入必要庫 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            padding-top: env(safe-area-inset-top);
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        input:focus, select:focus { transform: translateY(-1px); transition: all 0.2s; }
+        /* 彈窗入場動畫 */
+        .modal-enter { animation: fadeInScale 0.2s ease-out forwards; }
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.9) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-[#F1F5F9]">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // 已設定為您最新的 Google Apps Script 網址
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyBRymifd5JDk3DtFxa3RYuBUXzpUQ1-oe1G_glfmMzTHJXxMtyy-Gr57x-eju55U_C/exec";
+
+        function App() {
+            const [view, setView] = useState('entry');
+            const [transactions, setTransactions] = useState([]);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
+            const [filterType, setFilterType] = useState('全部');
+            
+            // 自定義彈窗狀態
+            const [modal, setModal] = useState({ 
+                show: false, 
+                type: '', // 'clearAll' 或 'deleteSingle'
+                id: null, 
+                title: '', 
+                message: '' 
+            });
+            
+            const [formData, setFormData] = useState({
+                type: '轉入',
+                productName: '',
+                quantity: '',
+                unit: '件',
+                receiptId: ''
+            });
+
+            const actionColors = {
+                '轉入': { bg: 'bg-emerald-600', text: 'text-emerald-600', light: 'bg-emerald-50', border: 'border-emerald-200' },
+                '轉出': { bg: 'bg-rose-600', text: 'text-rose-600', light: 'bg-rose-50', border: 'border-rose-200' },
+                '收貨': { bg: 'bg-blue-600', text: 'text-blue-600', light: 'bg-blue-50', border: 'border-blue-200' },
+                '退回': { bg: 'bg-orange-600', text: 'text-orange-600', light: 'bg-orange-50', border: 'border-orange-200' }
+            };
+
+            const units = ['件', '箱', '卷', 'KG', '板'];
+
+            // 本地儲存加載
+            useEffect(() => {
+                try {
+                    const saved = localStorage.getItem('inv_v5_final');
+                    if (saved) setTransactions(JSON.parse(saved));
+                } catch (e) { console.error("加載失敗", e); }
+            }, []);
+
+            // 本地儲存同步
+            useEffect(() => { 
+                localStorage.setItem('inv_v5_final', JSON.stringify(transactions)); 
+            }, [transactions]);
+
+            // 自動移除狀態提示
+            useEffect(() => {
+                if (statusMsg.text) {
+                    const timer = setTimeout(() => setStatusMsg({ type: '', text: '' }), 3000);
+                    return () => clearTimeout(timer);
+                }
+            }, [statusMsg]);
+
+            const frequentProducts = useMemo(() => {
+                const counts = transactions.reduce((acc, curr) => {
+                    if (curr.productName) {
+                        acc[curr.productName] = (acc[curr.productName] || 0) + 1;
+                    }
+                    return acc;
+                }, {});
+                return Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 6);
+            }, [transactions]);
+
+            const groupedTransactions = useMemo(() => {
+                const filtered = transactions.filter(t => filterType === '全部' || t.type === filterType);
+                const groups = {};
+                filtered.forEach(t => {
+                    const timestampParts = t.timestamp.split(' ');
+                    const rawDate = timestampParts[0];
+                    let dateKey = rawDate;
+                    
+                    if (rawDate.includes('/')) {
+                        const parts = rawDate.split('/');
+                        if (parts[0].length === 4) { 
+                            dateKey = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                        } else { 
+                            dateKey = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                        }
+                    }
+                    if (!groups[dateKey]) groups[dateKey] = [];
+                    groups[dateKey].push(t);
+                });
+                return groups;
+            }, [transactions, filterType]);
+
+            const calculateValue = (input) => {
+                if (!input) return "";
+                const sanitized = String(input).replace(/[^-+*/.0-9]/g, '');
+                try {
+                    const result = new Function(`return ${sanitized}`)();
+                    return isFinite(result) ? parseFloat(result.toFixed(2)) : "";
+                } catch (e) { return null; }
+            };
+
+            const handleQuantityBlur = () => {
+                const result = calculateValue(formData.quantity);
+                if (result !== null && result !== "") {
+                    setFormData({ ...formData, quantity: String(result) });
+                }
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const finalQty = calculateValue(formData.quantity);
+                if (!formData.productName.trim() || finalQty === null || finalQty === "") {
+                    setStatusMsg({ type: 'error', text: '資訊不完整或數量錯誤' });
+                    return;
+                }
+
+                setIsSubmitting(true);
+                try {
+                    const payload = {
+                        type: formData.type,
+                        productName: formData.productName.trim().toUpperCase().replace(/\s+/g, '-'),
+                        quantity: finalQty,
+                        unit: formData.unit,
+                        receiptId: formData.receiptId
+                    };
+                    
+                    await fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
+                    
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    const d = String(now.getDate()).padStart(2, '0');
+                    const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                                    now.getMinutes().toString().padStart(2, '0');
+                    
+                    const newRecord = {
+                        ...payload,
+                        id: Date.now(),
+                        timestamp: `${y}-${m}-${d} ${timeStr}`
+                    };
+                    
+                    setTransactions([newRecord, ...transactions]);
+                    setStatusMsg({ type: 'success', text: `已完成${formData.type}並同步雲端` });
+                    setFormData(prev => ({ ...prev, productName: '', quantity: '', receiptId: '' }));
+                    if (window.navigator.vibrate) window.navigator.vibrate(50);
+                } catch (error) {
+                    setStatusMsg({ type: 'error', text: '同步失敗，請檢查網路' });
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            // 執行確認動作
+            const handleModalConfirm = () => {
+                if (modal.type === 'clearAll') {
+                    setTransactions([]);
+                    setStatusMsg({ type: 'success', text: '已清空本地所有歷史紀錄' });
+                } else if (modal.type === 'deleteSingle') {
+                    setTransactions(prev => prev.filter(t => t.id !== modal.id));
+                }
+                setModal({ ...modal, show: false });
+            };
+
+            const isFormula = /[+*/-]/.test(formData.quantity);
+            const calculatedPreview = useMemo(() => calculateValue(formData.quantity), [formData.quantity]);
+
+            const ViewSwitcher = () => (
+                <nav className="flex gap-2 mt-8">
+                    <button onClick={() => setView('entry')} className={`flex-1 py-4 rounded-2xl font-black text-sm transition-all ${view === 'entry' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200'}`}>錄入資料</button>
+                    <button onClick={() => setView('history')} className={`flex-1 py-4 rounded-2xl font-black text-sm transition-all ${view === 'history' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200'}`}>歷史紀錄</button>
+                </nav>
+            );
+
+            return (
+                <div className="min-h-screen pb-12">
+                    {/* 自定義確認彈窗 - 取代原生 confirm */}
+                    {modal.show && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/70 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl modal-enter">
+                                <h3 className="text-xl font-black text-slate-900 mb-2">{modal.title}</h3>
+                                <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed">{modal.message}</p>
+                                <div className="flex flex-col gap-2">
+                                    <button onClick={handleModalConfirm} className="w-full py-4 bg-rose-500 text-white rounded-2xl font-black text-sm active:scale-95 transition-all">確認執行</button>
+                                    <button onClick={() => setModal({ ...modal, show: false })} className="w-full py-4 bg-slate-100 text-slate-400 rounded-2xl font-black text-sm active:scale-95 transition-all">取消</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <header className="bg-slate-900 text-white px-6 py-6 sticky top-0 z-50 flex justify-between items-center">
+                        <h1 className="font-black text-xl tracking-tight">倉庫快錄 Pro</h1>
+                        {isSubmitting && <span className="text-xs font-bold animate-pulse text-indigo-400">連線中</span>}
+                    </header>
+
+                    {statusMsg.text && (
+                        <div className="fixed top-24 left-0 right-0 z-[60] px-6">
+                            <div className={`flex items-center justify-center p-4 rounded-2xl shadow-2xl ${statusMsg.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'} text-white font-black`}>
+                                {statusMsg.text}
+                            </div>
+                        </div>
+                    )}
+
+                    <main className="max-w-md mx-auto p-4">
+                        {view === 'entry' ? (
+                            <div className="animate-in fade-in duration-500">
+                                <div className="bg-white p-2 rounded-[2rem] shadow-sm flex gap-1 mb-6">
+                                    {Object.keys(actionColors).map(t => (
+                                        <button key={t} onClick={() => setFormData({...formData, type: t})} className={`flex-1 py-4 rounded-3xl font-black text-xs transition-all duration-300 ${formData.type === t ? `${actionColors[t].bg} text-white shadow-lg` : 'text-slate-400'}`}>{t}</button>
+                                    ))}
+                                </div>
+                                <form onSubmit={handleSubmit} className="bg-white rounded-[2.5rem] p-7 shadow-xl border border-white space-y-6">
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center px-1">
+                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">產品名稱</label>
+                                            <span className="text-[10px] font-bold text-slate-300">AUTO-UPPERCASE</span>
+                                        </div>
+                                        <input type="text" value={formData.productName} onChange={e => setFormData({...formData, productName: e.target.value.toUpperCase().replace(/\s+/g, '-')})} placeholder="例如: SY-454-V2-BEEF-BOX" className="w-full p-5 bg-slate-50 border-none rounded-3xl focus:ring-2 focus:ring-indigo-500 text-lg font-black outline-none shadow-inner" />
+                                        <div className="flex flex-wrap gap-2">
+                                            {frequentProducts.map(p => (
+                                                <button key={p} type="button" onClick={() => setFormData({...formData, productName: p})} className="px-3 py-2 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold active:bg-indigo-100 transition-colors">{p}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <div className="flex-[3] space-y-3">
+                                            <div className="flex justify-between items-center px-1">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">數量</label>
+                                                {isFormula && calculatedPreview !== null && <span className="text-[10px] font-black text-indigo-500">= {calculatedPreview}</span>}
+                                            </div>
+                                            <input type="text" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} onBlur={handleQuantityBlur} placeholder="0 或 31*8" className="w-full p-5 bg-slate-50 border-none rounded-3xl focus:ring-2 focus:ring-indigo-500 text-2xl font-black outline-none shadow-inner" />
+                                        </div>
+                                        <div className="flex-[2] space-y-3">
+                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">單位</label>
+                                            <select value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})} className="w-full p-5 bg-slate-50 border-none rounded-3xl focus:ring-2 focus:ring-indigo-500 text-lg font-black outline-none appearance-none shadow-inner">
+                                                {units.map(u => <option key={u} value={u}>{u}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    {formData.type === '收貨' && (
+                                        <div className="space-y-3 animate-in slide-in-from-top-2">
+                                            <label className="text-xs font-black text-blue-600 uppercase tracking-widest px-1">收貨單號</label>
+                                            <input type="text" value={formData.receiptId} onChange={e => setFormData({...formData, receiptId: e.target.value.toUpperCase()})} placeholder="POXXXXXX" className="w-full p-5 bg-blue-50 border-2 border-blue-100 rounded-3xl focus:border-blue-500 text-lg font-black outline-none shadow-inner" />
+                                        </div>
+                                    )}
+                                    <button type="submit" disabled={isSubmitting} className={`w-full py-6 rounded-[2rem] font-black text-xl text-white shadow-2xl transition-all active:scale-95 ${isSubmitting ? 'bg-slate-300' : actionColors[formData.type].bg}`}>
+                                        {isSubmitting ? '處理中...' : `確認提交${formData.type}`}
+                                    </button>
+                                </form>
+                                <ViewSwitcher />
+                            </div>
+                        ) : (
+                            <div className="animate-in fade-in duration-500 pb-20">
+                                <div className="flex justify-between items-center px-2 mb-4">
+                                    <h2 className="text-2xl font-black text-slate-900">歷史紀錄</h2>
+                                    <button 
+                                        onClick={() => setModal({ 
+                                            show: true, type: 'clearAll', id: null, 
+                                            title: '清除全部紀錄', 
+                                            message: '您確定要清除手機上存儲的所有歷史紀錄嗎？雲端試算表的資料不會受影響。' 
+                                        })} 
+                                        className="text-rose-500 font-bold text-xs bg-rose-50 px-3 py-2 rounded-xl active:bg-rose-100"
+                                    >
+                                        清除全部
+                                    </button>
+                                </div>
+                                <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide text-left">
+                                    {['全部', '轉入', '轉出', '收貨', '退回'].map(f => (
+                                        <button key={f} onClick={() => setFilterType(f)} className={`px-5 py-2.5 rounded-full text-[11px] font-black whitespace-nowrap transition-all shadow-sm ${filterType === f ? 'bg-slate-900 text-white' : 'bg-white text-slate-500 border border-slate-100'}`}>{f}</button>
+                                    ))}
+                                </div>
+                                <div className="space-y-8">
+                                    {Object.keys(groupedTransactions).length === 0 ? (
+                                        <div className="py-20 text-center text-slate-300 font-bold uppercase tracking-widest text-xs">目前無數據</div>
+                                    ) : (
+                                        Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a)).map(date => (
+                                            <div key={date} className="space-y-3 text-left">
+                                                <div className="px-2 pb-1 border-b border-slate-200">
+                                                    <h3 className="text-sm font-black text-black">{date}</h3>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    {groupedTransactions[date].map(t => (
+                                                        <div key={t.id} className={`bg-white p-5 rounded-[2rem] shadow-sm border-l-8 ${actionColors[t.type]?.border || 'border-slate-200'} flex justify-between items-center active:scale-[0.98] transition-all`}>
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black ${actionColors[t.type]?.light || 'bg-slate-50'} ${actionColors[t.type]?.text || 'text-slate-600'}`}>{t.type}</span>
+                                                                    <span className="font-black text-slate-800 tracking-tight">{t.productName}</span>
+                                                                </div>
+                                                                <div className="text-[10px] text-slate-400 font-bold flex gap-2">
+                                                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-black tracking-tighter">{t.timestamp.split(' ')[1]}</span>
+                                                                    {t.receiptId && <span className="text-blue-500 font-black">#{t.receiptId}</span>}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="text-right">
+                                                                    <span className={`text-xl font-black ${actionColors[t.type]?.text || 'text-slate-900'}`}>{t.quantity}</span>
+                                                                    <span className="text-[10px] text-slate-400 ml-1 font-black">{t.unit}</span>
+                                                                </div>
+                                                                <button 
+                                                                    onClick={() => setModal({ 
+                                                                        show: true, type: 'deleteSingle', id: t.id, 
+                                                                        title: '刪除這筆紀錄', 
+                                                                        message: '您確定要從手機紀錄中刪除這一項嗎？' 
+                                                                    })} 
+                                                                    className="text-rose-500 text-[11px] font-black pl-3 border-l border-slate-100 active:text-rose-700"
+                                                                >
+                                                                    刪除
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                                <ViewSwitcher />
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
